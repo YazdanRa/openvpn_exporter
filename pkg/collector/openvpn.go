@@ -140,31 +140,34 @@ func (c *OpenVPNCollector) collect(ovpn OpenVPNServer, ch chan<- prometheus.Metr
 			if client.CommonName == "UNDEF" {
 				continue
 			}
-			if contains(clientCommonNames, client.CommonName) {
-				level.Warn(c.logger).Log(
-					"msg", "duplicate client common name in statusfile - duplicate metric dropped",
-					"commonName", client.CommonName,
-				)
-				continue
-			}
+// 			if contains(clientCommonNames, client.CommonName) {
+// 				level.Warn(c.logger).Log(
+// 					"msg", "duplicate client common name in statusfile - duplicate metric dropped",
+// 					"commonName", client.CommonName,
+// 				)
+// 				continue
+// 			}
 			clientCommonNames = append(clientCommonNames, client.CommonName)
 			ch <- prometheus.MustNewConstMetric(
 				c.BytesReceived,
 				prometheus.GaugeValue,
 				client.BytesReceived,
 				ovpn.Name, client.CommonName,
+				int64(client.ConnectedSince.Unix())%100000
 			)
 			ch <- prometheus.MustNewConstMetric(
 				c.BytesSent,
 				prometheus.GaugeValue,
 				client.BytesSent,
 				ovpn.Name, client.CommonName,
+				int64(client.ConnectedSince.Unix())%100000
 			)
 			ch <- prometheus.MustNewConstMetric(
 				c.ConnectedSince,
 				prometheus.GaugeValue,
 				float64(client.ConnectedSince.Unix()),
 				ovpn.Name, client.CommonName,
+				int64(client.ConnectedSince.Unix())%100000
 			)
 		}
 	}
