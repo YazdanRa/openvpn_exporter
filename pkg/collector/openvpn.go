@@ -4,6 +4,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+	"strconv"
 
 	"github.com/patrickjahns/openvpn_exporter/pkg/openvpn"
 )
@@ -58,19 +59,19 @@ func NewOpenVPNCollector(logger log.Logger, openVPNServer []OpenVPNServer, colle
 		BytesReceived: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "bytes_received"),
 			"Amount of data received via the connection",
-			[]string{"server", "common_name"},
+			[]string{"server", "common_name", "hash"},
 			nil,
 		),
 		BytesSent: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "bytes_sent"),
 			"Amount of data sent via the connection",
-			[]string{"server", "common_name"},
+			[]string{"server", "common_name", "hash"},
 			nil,
 		),
 		ConnectedSince: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "connected_since"),
 			"Unixtimestamp when the connection was established",
-			[]string{"server", "common_name"},
+			[]string{"server", "common_name", "hash"},
 			nil,
 		),
 		ServerInfo: prometheus.NewDesc(
@@ -140,31 +141,34 @@ func (c *OpenVPNCollector) collect(ovpn OpenVPNServer, ch chan<- prometheus.Metr
 			if client.CommonName == "UNDEF" {
 				continue
 			}
-			if contains(clientCommonNames, client.CommonName) {
-				level.Warn(c.logger).Log(
-					"msg", "duplicate client common name in statusfile - duplicate metric dropped",
-					"commonName", client.CommonName,
-				)
-				continue
-			}
+			// 			if contains(clientCommonNames, client.CommonName) {
+			// 				level.Warn(c.logger).Log(
+			// 					"msg", "duplicate client common name in statusfile - duplicate metric dropped",
+			// 					"commonName", client.CommonName,
+			// 				)
+			// 				continue
+			// 			}
 			clientCommonNames = append(clientCommonNames, client.CommonName)
 			ch <- prometheus.MustNewConstMetric(
 				c.BytesReceived,
-				prometheus.GaugeValue,
+				prometheus.CounterValue,
 				client.BytesReceived,
 				ovpn.Name, client.CommonName,
+				strconv.Itoa(int(client.ConnectedSince.Unix()%100000)),
 			)
 			ch <- prometheus.MustNewConstMetric(
 				c.BytesSent,
-				prometheus.GaugeValue,
+				prometheus.CounterValue,
 				client.BytesSent,
 				ovpn.Name, client.CommonName,
+				strconv.Itoa(int(client.ConnectedSince.Unix()%100000)),
 			)
 			ch <- prometheus.MustNewConstMetric(
 				c.ConnectedSince,
 				prometheus.GaugeValue,
 				float64(client.ConnectedSince.Unix()),
 				ovpn.Name, client.CommonName,
+				strconv.Itoa(int(client.ConnectedSince.Unix()%100000)),
 			)
 		}
 	}
